@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: datawave
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/event_store?reWriteBatchedInserts=true
+    username: postgres
+    password: 1969
+    driver-class-name: org.postgresql.Driver
+
+  sql:
+    init:
+      mode: never
+
+logging:
+  level:
+    org.springframework.jdbc.core: DEBUG
