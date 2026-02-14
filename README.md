@@ -1,19 +1,16 @@
-
----
-
 # Datawave: High-Frequency Time-Series Aggregator
 
 A Spring Boot service designed as a hardcore learning playground for ingesting high-volume tick events. It bypasses classic relational database bottlenecks by offloading concurrent writes and updates to in-memory ring buffers, writing to PostgreSQL partitions via dedicated background workers.
+
+
 
 ## Architecture (The "Survive 300 VUs" Edition)
 
 * **REST API:** `TickController` handles tick writes (`POST`), range reads (`GET`), and range volume updates (`PATCH`).
 * **Asynchronous Queues:** To prevent HikariCP connection pool exhaustion and PostgreSQL deadlocks under heavy concurrent load, **both** inserts and updates are offloaded to separate `ArrayBlockingQueue` buffers. The API returns `200 OK` immediately.
 * **Workers:** Dedicated background daemon threads drain the queues.
-* Inserts are batched (flushed every 50ms or 6,000 items) using JDBC `reWriteBatchedInserts=true`.
-* Updates are processed strictly sequentially to guarantee zero database deadlocks.
-
-
+    * Inserts are batched (flushed every 50ms or 6,000 items) using JDBC `reWriteBatchedInserts=true`.
+    * Updates are processed strictly sequentially to guarantee zero database deadlocks.
 * **Storage:** Raw SQL via `JdbcTemplate` targeting time-partitioned PostgreSQL tables (`ticks_YYYY_MM_DD`) with BRIN indexes on `created_at`.
 * **Maintenance:** `AdminService` trims old partitions nightly at 03:00 via a `@Scheduled` job (because executing `TRUNCATE` under user load is a death sentence for the database).
 
@@ -70,3 +67,14 @@ This is a learning project mutating towards high-load readiness. Be aware of the
 4. **Strict Partitioning:** You *must* pre-create daily partitions (`ticks_YYYY_MM_DD`) with BRIN indexes. Ingesting data for a date without a corresponding partition will cause catastrophic SQL exceptions.
 
 ---
+
+## Roadmap: Evolution Towards the Ideal System
+
+This project is an ongoing mutation. The current architecture was a survival mechanism against PostgreSQL deadlocks. Here is how the system will evolve next to reach true high-load enterprise standards:
+
+* **[Planned] Phase 2: Message Broker Integration (Kafka / RabbitMQ)**
+    * *Goal:* Replace volatile in-memory `ArrayBlockingQueue` with a persistent message broker to guarantee zero data loss on JVM crashes and to decouple the web tier from the database workers entirely.
+* **[Planned] Phase 3: Event Sourcing & Immutability**
+    * *Goal:* Completely eliminate the `UPDATE` (PATCH) endpoint. Transition to an append-only architecture where volume adjustments are inserted as new compensating events, removing all row-level locking contention in the database.
+* **[Planned] Phase 4: True Time-Series Database (TSDB)**
+    * *Goal:* Migrate from vanilla PostgreSQL partitions to a specialized TSDB (like ClickHouse or TimescaleDB) to handle hundreds of thousands of inserts per second and automatic data retention (TTL) without manual background jobs.
