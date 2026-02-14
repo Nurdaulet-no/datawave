@@ -22,11 +22,11 @@ The High-Frequency Time-Series Aggregator efficiently processes time-series data
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/high-frequency-time-series-aggregator.git
+   git clone https://github.com/Nurdaulet-no/datawave.git
    ```
 2. Navigate to the project directory:
    ```bash
-   cd high-frequency-time-series-aggregator
+   cd datawave
    ```
 3. Configure PostgreSQL settings in the application properties file.
 
